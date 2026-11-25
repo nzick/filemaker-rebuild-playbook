@@ -1,138 +1,142 @@
-# Start-Prompt (Vorlage)
+# Start prompt (template)
 
-Platzhalter in `<…>` ersetzen, nicht zutreffende Abschnitte streichen und die Extrakte anhängen.
+Replace the placeholders in `<…>`, delete sections that do not apply and attach the extracts.
 
 ---
 
-Ich möchte die FileMaker-Anwendung "<APP_NAME>" neu entwickeln. Angehängt sind die FileMaker-Extrakte
-(DDR "<APP_NAME>_fmp12.xml" und "Datenbankbericht-<APP_NAME>.xml") sowie unser Logo.
-Arbeite im Projektordner <ZIELORDNER>. Antworte auf <SPRACHE>.
+I want to redevelop the FileMaker application "<APP_NAME>". Attached are the FileMaker extracts
+(DDR "<APP_NAME>_fmp12.xml" and database report "<APP_NAME>-report.xml") and our logo.
+Work in the project folder <TARGET_FOLDER>. Answer in <LANGUAGE>.
 
-Referenz: Die Anwendung "<REFERENZPROJEKT>" unter <PFAD_REFERENZ> ist nach genau diesem Schema gebaut.
-Übernimm von dort Architektur, Basisklassen (core/, db/, auth/, shared/), Design (frontend/src/styles.scss,
-Logo, Komponentenmuster), Lint-/Sonar-Konfiguration und Doku-Aufbau.
-(Ohne Referenzprojekt: diesen Absatz streichen, das Gerüst entsteht nach Abschnitt 2.)
+Reference: the application "<REFERENCE_PROJECT>" in <REFERENCE_PATH> is built on exactly this scheme.
+Take over its architecture, base classes (core/, db/, auth/, shared/), design (frontend/src/styles.scss,
+logo, component patterns), lint/Sonar configuration and documentation structure.
+(No reference project: delete this paragraph; the scaffold is built according to section 2.)
 
-## 1. Analyse der FileMaker-Extrakte
-- DDR ist UTF-16: vor der Analyse nach UTF-8 konvertieren (z. B. mit `scripts/ddr_inventar.py`).
-- Vollständig auswerten:
-  - Basistabellen, Tabellenauftreten, Beziehungen
-  - Felder, inkl. Formel- und globaler Felder
-  - Skripte, Layouts, Wertelisten
-  - Konten/Berechtigungssets
-  - externe Datenquellen (Dateiverweise, ODBC)
-- Layouts NICHT nur strukturell lesen: Textobjekte (<Data>) in Drucklayouts enthalten Brief-, Zahlungs- und
-  Mahntexte. Alle Texte, Formeln und Regeln 1:1 aus FileMaker übernehmen, nichts selbst formulieren.
-  Bei mehreren Varianten (auskommentiert/aktiv) gilt die aktive Formel.
-- Grundsatz: Verhalten wie in FileMaker. Abweichungen (auch Verbesserungen) nur nach meiner ausdrücklichen
-  Bestätigung. Jede Entscheidung in docs/ANALYSE.md festhalten (E-1, E-2, …).
-- Ungenutzte Objekte und Altlasten benennen, aber nicht nachbauen.
-- Geheimnisse aus dem DDR (Passwörter, ODBC-Zugangsdaten) niemals übernehmen oder wiederholen, nur als
-  Sicherheitsbefund melden (Rotation empfehlen).
-- Felder, die im DDR fehlen bzw. aus anderen Dateien kommen, als offene Punkte auflisten und die DDRs der
-  referenzierten Dateien anfordern.
-- Echte Datenexporte liegen in <ORDNER_ECHTDATEN> (git-ignoriert): nie committen, keine Namen oder Werte im
-  Chat ausgeben.
+## 1. Analyse the FileMaker extracts
+- The DDR is UTF-16: convert it to UTF-8 before the analysis (e.g. with `scripts/ddr_inventory.py`).
+- Evaluate everything:
+  - base tables, table occurrences, relationships;
+  - fields, including calculated and global fields;
+  - scripts, layouts, value lists;
+  - accounts/privilege sets;
+  - external data sources (file references, ODBC).
+- Do NOT read layouts for their structure only: text objects (<Data>) in print layouts contain letter, payment
+  and dunning texts. Take all texts, formulas and rules over 1:1 from FileMaker and never write your own.
+  If there are several variants (commented out / active), the active formula applies.
+- Principle: behave like FileMaker. Deviations (improvements included) only after my explicit confirmation.
+  Record every decision in docs/ANALYSIS.md (D-1, D-2, …).
+- Name unused objects and legacy, but do not rebuild them.
+- Never take over or repeat credentials from the DDR (passwords, ODBC logins); report them only as a security
+  finding (recommend rotation).
+- List fields that are missing from the DDR or come from other files as open points, and request the DDRs of
+  the referenced files.
+- Real data exports are in <REAL_DATA_FOLDER> (git-ignored): never commit them, never print names or values in
+  the chat.
 
-## 2. Zielarchitektur
+## 2. Target architecture
 - Backend:
   - Node.js 22, TypeScript (strict), Express 5, Zod, PostgreSQL 16.
-  - Lokal ohne Installation über eingebettetes PGlite (gleiche Datenbank-Abstraktion).
-  - SQL-Migrationen als Dateien mit Prüfsumme.
-- Frontend: Angular (aktuelle Version), Standalone-Komponenten, Signals, zoneless, OnPush überall, typisierte
-  Modelle (kein `any`), strictTemplates.
-- Webserver: nginx (SPA + Reverse-Proxy /api, Security-Header, CSP ohne Inline-Skripte; Angular-Build daher mit
-  inlineCritical=false). Betrieb per Docker Compose (db, backend, web).
-- Strikt objektorientiert:
-  - Schichten controllers → services → repositories → db.
-  - Fachlogik in domain/ als Klassen ohne DB-Zugriff.
-  - Composition Root (Application-Klasse) mit Konstruktor-Injektion, keine globalen Singletons.
-  - Konfiguration als unveränderliche AppConfig.fromEnv().
-- Design Patterns gezielt einsetzen und in docs/ARCHITEKTUR.md mit Fundstelle dokumentieren:
-  - Abstract Factory (Integrationen), Factory Method, Adapter
-  - Template Method (Controller-Basisklasse, PDF-Aufbau)
-  - Strategy (Sprachen, Versandkanäle, Freigaben je Prozessart)
-  - Specification + Composite (Prüfregeln), Chain of Responsibility (automatische Übernahmen/Lookups)
-  - Builder (XML, SQL), Repository, Value Objects, Fehlerklassen-Hierarchie
-- SQL immer parametrisiert; dynamische Spaltennamen nur über geprüfte Bezeichner.
+  - Locally without installation through embedded PGlite (same database abstraction).
+  - SQL migrations as files with a checksum.
+- Frontend: Angular (current version), standalone components, signals, zoneless, OnPush everywhere, typed
+  models (no `any`), strictTemplates.
+- Web server: nginx (SPA + reverse proxy /api, security headers, CSP without inline scripts; Angular build
+  therefore with inlineCritical=false). Operation via Docker Compose (db, backend, web).
+- Strictly object-oriented:
+  - layers controllers → services → repositories → db;
+  - business logic in domain/ as classes without database access;
+  - a composition root (Application class) with constructor injection, no global singletons;
+  - configuration as an immutable AppConfig.fromEnv().
+- Use design patterns deliberately and document each with its location in docs/ARCHITECTURE.md:
+  - Abstract Factory (integrations), Factory Method, Adapter;
+  - Template Method (controller base class, PDF layout);
+  - Strategy (languages, delivery channels, release per process type);
+  - Specification + Composite (validation rules), Chain of Responsibility (automatic defaults/lookups);
+  - Builder (XML, SQL), Repository, Value Objects, error class hierarchy.
+- SQL always parameterised; dynamic column names only through checked identifiers.
 
-## 3. Fachliche Anforderungen (aus FileMaker abgeleitet)
-- Alle fachlich relevanten Skripte als Anwendungsfälle/Endpunkte; Mapping FM-Skript → neu in docs/ANALYSE.md.
-- Rollen aus den FM-Berechtigungssets ableiten. Rechte serverseitig erzwingen (nicht nur Buttons ausblenden).
-  Objekt- und Mandantenfilter je Benutzer wie in FileMaker.
-- Datensätze mit Optimistic Locking (Versionsnummer).
-- Protokollierung:
-  - Änderungshistorie je Datensatz.
-  - Audit-Trail per DB-Trigger (Quelle manuell/Import/System).
-  - Logbuch für Löschungen und Abgleiche.
-- Belegnummern (falls vorhanden):
-  - transaktionssicher vergeben, danach den Datensatz sperren (GoBD);
-  - kein Löschen nummerierter Belege;
-  - DSGVO-Löschung nach Aufbewahrungsfrist mit doppelter Bestätigung.
-- PDF-Ausgaben nach den FM-Drucklayouts (Texte wörtlich, Sprachvarianten, Hausschrift eingebettet),
-  Probeexemplar mit Wasserzeichen.
-- Falls Rechnungen erzeugt werden: XRechnung 3.0 (UBL 2.1, EN 16931) mit Pflichtfeldprüfung, XML-Download,
-  Versand per E-Mail/Peppol, Archivierung mit SHA-256; XML gegen das UBL-XSD prüfen.
-- Datenübernahme-Skript aus FM-CSV-Exporten (IDs erhalten, Sequenzen nachziehen, --dry-run).
+## 3. Business requirements (derived from FileMaker)
+- Every business-relevant script becomes a use case/endpoint; mapping FM script → new in docs/ANALYSIS.md.
+- Derive roles from the FM privilege sets. Enforce permissions on the server (not just by hiding buttons).
+  Object and tenant filters per user as in FileMaker.
+- Records with optimistic locking (version number).
+- Logging:
+  - change history per record;
+  - an audit trail through DB triggers (source manual/import/system);
+  - a log book for deletions and syncs.
+- Document numbers (if any):
+  - assign them inside a transaction and lock the record afterwards (GoBD);
+  - never delete numbered documents;
+  - GDPR deletion after the retention period, with double confirmation.
+- PDF output following the FM print layouts (texts verbatim, language variants, corporate font embedded), a
+  draft copy with a watermark.
+- If invoices are produced: XRechnung 3.0 (UBL 2.1, EN 16931) with required-field checks, XML download,
+  delivery by email/Peppol, archiving with SHA-256; validate the XML against the UBL XSD.
+- Data migration script from FM CSV exports (keep IDs, advance sequences, --dry-run).
 
-## 4. Fremdsysteme
-- Für JEDES externe System ein Adapter mit Mock-Implementierung, umschaltbar über *_MODE in .env.
-  Systeme: <LISTE, z. B. FileMaker Data API, SQL-Server-Views (technischer Leserbenutzer, TLS, ReadOnly),
-  Anmeldung, SMTP (Mock schreibt .eml), HR-/SAP-Lieferung>.
-- Die App muss mit Mocks sofort lokal lauffähig sein (Demo-Daten, Mock-Benutzer je Rolle, Passwort = Login).
-- Fällt ein Fremdsystem beim Abgleich aus, laufen die übrigen weiter; Fehler im Ergebnis und Log melden.
-- docs/SCHNITTSTELLEN.md: alle Felder je Fremdsystem mit Bedarf, bisherigem FM-Feldnamen und Verwendung;
-  View-Spezifikationen mit Abnahmekriterien.
-- Eingehende Lieferungen: nur echte Änderungen erkennen, daraus Vorschläge erzeugen. Jedes Ereignis bekommt
-  einen Status mit Empfehlung, „Änderung ignorieren“ mit Begründung.
-- Anmeldung über AD-Gruppen → Rollen. Bevorzugt Entra ID / OIDC; LDAP-Bind nur als Alternative. Vor der
-  Umsetzung mit mir klären.
+## 4. External systems
+- For EVERY external system an adapter with a mock implementation, switched by *_MODE in .env.
+  Systems: <LIST, e.g. FileMaker Data API, SQL Server views (technical read-only user, TLS), sign-in,
+  SMTP (mock writes .eml), HR/ERP delivery>.
+- The app must run locally with mocks right away (demo data, one mock user per role, password = login).
+- If an external system fails during a sync, the others keep running; report the error in the result and the
+  log.
+- docs/INTERFACES.md: every field per external system with its need, the former FM field name and its use;
+  view specifications with acceptance criteria.
+- Incoming deliveries: detect real changes only and turn them into proposals. Every event gets a status with a
+  recommendation, plus "ignore change" with a reason.
+- Sign-in through AD groups → roles. Preferably Entra ID / OIDC; LDAP bind only as an alternative. Agree on
+  this with me before implementing.
 
-## 5. Stammdaten
-- Stammdaten aus Fremdsystemen sind in der App nur lesbar; Anlegen nur bei rein lokalen Stammdaten.
-- Felder, die die App zusätzlich pflegt, sind auch bei externen Datensätzen änderbar, als „lokal“
-  gekennzeichnet und werden vom Abgleich nicht überschrieben.
-- Im Backend erzwingen (403) und mit Tests absichern. Die Liste zeigt die Quelle je Datensatz.
+## 5. Master data
+- Master data from external systems is read-only in the app; creating records only for purely local master
+  data.
+- Fields the app maintains in addition can be edited on external records too, are marked "local" and are never
+  overwritten by the sync.
+- Enforce this in the backend (403) and cover it with tests. The list shows the source of each record.
 
-## 6. Bedienung (UX)
-- Entweder-oder-Felder nie gleichzeitig anzeigen: erst die Art wählen (Segment), dann nur das passende Feld;
-  ein Wechsel leert die anderen Angaben.
-- Pflichtfelder sichtbar kennzeichnen und nach Zweck unterscheiden, mit Legende.
-- Live-Checkliste „Was fehlt noch?“ in der Seitenleiste je Workflow-Schritt.
-- Editor-Muster: Tabs, Karten, Seitenleiste, Speichern/Verwerfen bei ungespeicherten Änderungen,
-  Ablauf-Schritte, Aktionen nach Rechten.
-- Barrierefreiheit: Labels, Tastaturbedienung (Enter auf Tabellenzeilen), Dialoge per Escape schließen.
+## 6. Usability (UX)
+- Never show either-or fields at the same time: first choose the kind (segment control), then only the
+  matching field; switching clears the other values.
+- Mark required fields visibly and by purpose, with a legend.
+- A live checklist "What is still missing?" in the sidebar for each workflow step.
+- Editor pattern: tabs, cards, sidebar, save/discard for unsaved changes, workflow steps, actions by
+  permission.
+- Accessibility: labels, keyboard use (Enter on table rows), close dialogs with Escape.
 
 ## 7. Design
-- Designsystem <NAME + LINK>: Farben, Schrift, Abstände und Radien als CSS-Variablen (Tokens); keine festen
-  Hex-Werte oder px-Schriftgrößen in Komponenten.
-  <Kernwerte: Primärfarbe, Grautöne, Feedbackfarben, Schrift, Radien, Abstände>
-- Hausschrift <NAME> aus <PFAD> als WOFF im Frontend und TTF in PDFs. Lizenz beachten (Repository privat).
-- Logo <NAME> in Kopfzeile und Login.
+- Design system <NAME + LINK>: colours, font, spacings and radii as CSS variables (tokens); no fixed hex values
+  or px font sizes in components.
+  <Core values: primary colour, greys, feedback colours, font, radii, spacings>
+- Corporate font <NAME> from <PATH>: WOFF in the frontend and TTF in PDFs. Mind the licence (private
+  repository).
+- Logo <NAME> in the header and on the login page.
 
-## 8. Code-Qualität
-- ESLint mit gts (Google TypeScript Style inkl. Prettier) + eslint-plugin-sonarjs + angular-eslint (inkl.
-  Template-Barrierefreiheit, OnPush, Signals). Ziel: 0 Fehler, 0 Warnungen; Ausnahmen nur begründet im Code.
-- Unit-Tests für die Fachlogik, API-Tests gegen die Mocks (In-Memory-PGlite), Adapter-Tests mit simulierten
-  Quellen. **100 % Testabdeckung als Schwelle** in Backend und Frontend.
-- sonar-project.properties für SonarQube.
-- Abhängigkeiten in exakten, nicht ganz frischen Versionen (mind. ca. 2 Wochen alt); npm audit ohne hohe Befunde.
+## 8. Code quality
+- ESLint with gts (Google TypeScript Style incl. Prettier) + eslint-plugin-sonarjs + angular-eslint (incl.
+  template accessibility, OnPush, signals). Target: 0 errors, 0 warnings; exceptions only with a justification
+  in the code.
+- Unit tests for the business logic, API tests against the mocks (in-memory PGlite), adapter tests with
+  simulated sources. **100 % test coverage as a threshold** in backend and frontend.
+- sonar-project.properties for SonarQube.
+- Dependencies at exact, not brand-new versions (at least about 2 weeks old); npm audit without high findings.
 
-## 9. Betrieb
-- Updates ohne Datenverlust (Sicherung vor Migration, scripts/update.sh).
-- CI/CD-Pipeline (<Azure DevOps | GitHub Actions>):
-  - Lint, Tests mit Abdeckung, Builds, Migrationen gegen PostgreSQL, Docker-Images, npm audit;
-  - optional SonarQube und Deploy.
+## 9. Operations
+- Updates without data loss (backup before migration, scripts/update.sh).
+- CI/CD pipeline (<Azure DevOps | GitHub Actions>):
+  - lint, tests with coverage, builds, migrations against PostgreSQL, Docker images, npm audit;
+  - optional SonarQube and deployment.
 
-## 10. Dokumentation
-- README (Start mit Docker und lokal, Mock-Benutzer, Qualität)
-- docs/ANALYSE.md (FM → neu, Entscheidungen, offene Punkte, Sicherheitsbefunde)
-- docs/ARCHITEKTUR.md
-- docs/BETRIEB.md (Integrationen umschalten, Datenübernahme, Produktions-Checkliste)
-- docs/SCHNITTSTELLEN.md
+## 10. Documentation
+- README (start with Docker and locally, mock users, quality)
+- docs/ANALYSIS.md (FM → new, decisions, open points, security findings)
+- docs/ARCHITECTURE.md
+- docs/OPERATIONS.md (switching integrations, data migration, production checklist)
+- docs/INTERFACES.md
 
-## 11. Prüfung vor Abschluss
-- Lint, Typecheck, Tests und Produktions-Build grün; `npm ci` unter Linux bzw. im Docker-Build geprüft.
-- App im Browser wirklich durchklicken (Login je Rolle, Kernabläufe, Stammdaten, Rechteprüfung).
-- Erzeugte PDFs visuell prüfen, XML gegen Schema validieren.
-- Klar berichten, was nicht verifiziert werden konnte (z. B. echte Fremdsysteme, Docker).
+## 11. Checks before completion
+- Lint, type check, tests and production build green; `npm ci` verified on Linux or in the Docker build.
+- Actually click through the app in the browser (login per role, core flows, master data, permission checks).
+- Look at the generated PDFs, validate XML against its schema.
+- Report clearly what could not be verified (e.g. real external systems, Docker).

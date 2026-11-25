@@ -1,71 +1,69 @@
-# Lessons Learned
+# Lessons learned
 
-Konkrete Stolpersteine aus echten Projekten, mit Ursache und Gegenmaßnahme.
+Concrete pitfalls from real projects, each with its cause and the countermeasure.
 
-## Analyse
+## Analysis
 
-- **Der DDR ist UTF-16**, und grep oder Editoren finden darin nichts. Immer zuerst konvertieren oder
-  `scripts/ddr_inventar.py` nutzen.
-- **Zugangsdaten stecken als Formel** (`<Password><Calculation>…`) unter ODBC-Quellen und Dateiverweisen. Wer
-  nur den Elementtext prüft, übersieht sie.
-- **Drucktexte stehen in Layout-Textobjekten**, nicht in Skripten. Wer Layouts nur strukturell liest, erfindet
-  später Texte.
-- **Wirkungslose FM-Prüfungen** (z. B. ein Textmuster gegen eine numerische ID): als Entscheidung vorlegen und
-  standardmäßig 1:1 übernehmen, damit sich das Verhalten nicht unbemerkt ändert.
-- **Hartkodierte Benutzerkonten** in Skripten nicht übernehmen; nachfragen.
+- **The DDR is UTF-16**, so grep and most editors find nothing in it. Always convert it first or use
+  `scripts/ddr_inventory.py`.
+- **Credentials are stored as formulas** (`<Password><Calculation>…`) under ODBC sources and file references.
+  Checking only the element text misses them.
+- **Print texts live in layout text objects**, not in scripts. Reading layouts only for their structure leads
+  to invented texts later.
+- **FM checks that never fire** (e.g. a text pattern compared with a numeric ID): present them as a decision
+  and take them over 1:1 by default, so behaviour does not change unnoticed.
+- **Hard-coded user accounts** in scripts: do not take them over; ask.
 
-## Fachlogik
+## Business logic
 
-- **Abgeleiteter Status ohne Kindsätze:** Gilt „keine Positionen ⇒ erledigt“, der Status wird aber nur bei
-  einer Positionsänderung neu berechnet, dann bleibt ein leerer Auftrag für immer „neu“. Der Prozess wartet
-  dann ewig. Status deshalb direkt nach dem Anlegen bewerten.
-- **„Inaktiv“ ist nicht „ausgetreten“:** Ruhende Mitarbeiter sind im Altsystem oft inaktiv, gehören aber zum
-  Bestand. Regeln für Änderungen dürfen sie nicht ausfiltern.
-- **Importe ohne Vorschlag sind Arbeit ohne Ende:** Jedes Ereignis braucht eine automatische Empfehlung,
-  sonst bleiben unklare Einträge liegen. „Ignorieren“ muss es geben, mit Begründung und rückgängig machbar.
-- **Stabile Ereignisschlüssel** (z. B. `ART:personalnummer:stichtag`): Damit erkennt der Import, was schon
-  vorgeschlagen, freigegeben oder ignoriert wurde, und nichts kommt doppelt.
+- **Derived status without child records:** if "no items ⇒ done" holds but the status is only recalculated
+  when an item changes, an empty order stays "new" forever, and the process waits forever. Evaluate the status
+  right after creation.
+- **"Inactive" is not "left the company":** employees on leave are often inactive in the old system but still
+  belong to the workforce. Change rules must not filter them out.
+- **Imports without proposals create endless work:** every event needs an automatic recommendation, or unclear
+  entries pile up. There must be an "ignore" action, with a reason and a way to undo it.
+- **Stable event keys** (e.g. `TYPE:personnel-number:effective-date`): they let the import recognise what has
+  already been proposed, released or ignored, so nothing shows up twice.
 
-## Daten und Datenschutz
+## Data and privacy
 
-- Echte Exporte nur in einem git-ignorierten Ordner. Vor jedem Push den ganzen Verlauf prüfen:
-  `git log --all --name-only | grep -iE "\.csv|\.xlsx|\.env|import-lokal"`.
-- Testdaten pseudonymisieren: Stammdaten (OEs, Profile) dürfen echt sein, Personen nicht.
-- Im Chat oder in Logs nie Namen oder Werte aus echten Daten ausgeben, nur Anzahlen.
+- Keep real exports only in a git-ignored folder. Before every push, check the whole history:
+  `git log --all --name-only | grep -iE "\.csv|\.xlsx|\.env|import-local"`.
+- Pseudonymise test data: master data (org units, profiles) may be real, people may not.
+- Never print names or values from real data in chat or logs, only counts.
 
-## Lokale Entwicklung
+## Local development
 
-- **PGlite verträgt nur einen Prozess je Datenverzeichnis.** Kein zweites Backend auf dasselbe `DATA_DIR`
-  starten, das kann die Datenbank beschädigen. Für Tests In-Memory-PGlite verwenden.
-- Mock-Passwort = Login. Das steht in der README, damit niemand rätselt.
+- **PGlite tolerates only one process per data directory.** Never start a second backend on the same
+  `DATA_DIR`; it can corrupt the database. Use in-memory PGlite for tests.
+- Mock password = login. Say so in the README so nobody has to guess.
 
 ## Design
 
-- Hausschrift in Komponenten erzwingen: Formularelemente erben `font-family` nicht von selbst.
-- `font-synthesis: none`, sonst erzeugt der Browser falsches Fett oder Kursiv, wenn ein Schnitt fehlt.
-- PDF-Bibliotheken brauchen TTF. Zeichensatz der Schrift prüfen (z. B. `ş`, `Ł`, `µ`) und fehlende Zeichen
-  sauber ersetzen.
-- Schriftlizenz: nur in privaten Repositories ablegen und in `docs/ARCHITEKTUR.md` vermerken.
+- Enforce the corporate font in components: form controls do not inherit `font-family` on their own.
+- Set `font-synthesis: none`, or the browser fakes bold or italic when a weight is missing.
+- PDF libraries need TTF. Check the font's character set (e.g. `ş`, `Ł`, `µ`) and replace missing characters
+  cleanly.
+- Font licence: store fonts only in private repositories and note this in `docs/ARCHITECTURE.md`.
 
-## Build und CI
+## Build and CI
 
-- **`npm ci` bricht unter Linux ab, obwohl es auf dem Mac läuft.** Ursache: Optionale Peer-Abhängigkeiten
-  (z. B. `@emnapi/core` und `@emnapi/runtime` von `@napi-rs/wasm-runtime`) fehlen im Lockfile, das auf macOS
-  erzeugt wurde. Neu Auflösen hilft nicht. Lösung: die Pakete mit fester Version als devDependencies aufnehmen.
-  Test vor dem Push in einem leeren Verzeichnis:
+- **`npm ci` fails on Linux although it works on macOS.** Cause: optional peer dependencies (e.g.
+  `@emnapi/core` and `@emnapi/runtime` of `@napi-rs/wasm-runtime`) are missing from a lockfile generated on
+  macOS. Re-resolving does not help. Fix: add the packages as devDependencies with exact versions. Test before
+  pushing, in an empty folder:
   `cp package*.json $(mktemp -d) && cd $_ && npm ci --ignore-scripts`.
-- `npm audit --omit=dev --audit-level=high` als eigener Pipeline-Job: Laufzeit-Lücken blockieren den Lauf,
-  Lücken in Dev-Tools nicht.
-- Migrationen in der Pipeline zweimal laufen lassen. Der zweite Lauf muss „nichts zu tun“ melden, sonst
-  stimmen Prüfsummen oder Idempotenz nicht.
-- Tests nach dem Zusammenführen paralleler Arbeiten (Branches, Sessions) auf dem Gesamtstand erneut laufen
-  lassen, bevor gepusht wird.
+- Run `npm audit --omit=dev --audit-level=high` as a separate pipeline job: vulnerabilities in runtime
+  dependencies block the run, those in dev tools do not.
+- Run migrations twice in the pipeline. The second run must report "nothing to do"; otherwise checksums or
+  idempotency are off.
+- After merging parallel work (branches, sessions), run the tests again on the combined state before pushing.
 
-## Arbeiten mit Claude Code
+## Working with Claude Code
 
-- Große, unabhängige Erweiterungen (z. B. Benachrichtigungen) in eigenen Sessions bauen lassen. Danach auf dem
-  Gesamtstand testen.
-- Zugangsdaten (Tokens, Passkeys) nicht in den Chat geben. Den Push einmal selbst im Terminal ausführen,
-  danach liegt der Token im Schlüsselbund.
-- Entscheidungen sofort in `docs/ANALYSE.md` festhalten. Das ist das Gedächtnis des Projekts über Sessions
-  hinweg.
+- Have large, independent extensions (e.g. notifications) built in separate sessions, then test on the
+  combined state.
+- Never paste credentials (tokens, passkeys) into the chat. Run the first push yourself in the terminal; after
+  that, the token sits in the keychain.
+- Record decisions in `docs/ANALYSIS.md` immediately. It is the project's memory across sessions.

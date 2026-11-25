@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Verlinkt den Skill nach ~/.claude/skills (persönlich, für alle Projekte)
+# Links the skill into ~/.claude/skills (personal, for all projects)
 set -euo pipefail
-quelle="$(cd "$(dirname "$0")" && pwd)/skills/filemaker-rebuild"
-ziel="${HOME}/.claude/skills/filemaker-rebuild"
-mkdir -p "$(dirname "$ziel")"
-if [ -e "$ziel" ] && [ ! -L "$ziel" ]; then
-  echo "$ziel existiert bereits und ist kein Link – bitte prüfen." >&2
+source_dir="$(cd "$(dirname "$0")" && pwd)/skills/filemaker-rebuild"
+target="${HOME}/.claude/skills/filemaker-rebuild"
+mkdir -p "$(dirname "$target")"
+if [ -e "$target" ] && [ ! -L "$target" ]; then
+  echo "$target already exists and is not a link - please check." >&2
   exit 1
 fi
-ln -sfn "$quelle" "$ziel"
-echo "Skill installiert: $ziel -> $quelle"
+ln -sfn "$source_dir" "$target"
+echo "Skill installed: $target -> $source_dir"

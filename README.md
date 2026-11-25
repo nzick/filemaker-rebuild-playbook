@@ -1,50 +1,54 @@
-# FileMaker-Rebuild-Playbook
+# FileMaker Rebuild Playbook
 
-Wiederverwendbares Vorgehen, um FileMaker-Anwendungen als moderne Web-Apps neu zu entwickeln, mit Claude Code.
-Es entstand aus mehreren realen Neuentwicklungen und ist bewusst allgemein gehalten: keine Firmendaten,
-keine Zugangsdaten, keine Echtdaten.
+A reusable approach for redeveloping FileMaker applications as modern web apps with Claude Code. It grew out of
+several real redevelopments and is deliberately generic: no company data, no credentials, no real data.
 
-**Ziel jeder Neuentwicklung:** fachliches Verhalten 1:1 wie in FileMaker, Node.js/TypeScript + Angular +
-PostgreSQL, sofort lokal lauffähig mit Mocks, 100 % Testabdeckung, Docker und CI/CD.
+**The goal of every redevelopment:**
+- business behaviour 1:1 as in FileMaker;
+- Node.js/TypeScript, Angular and PostgreSQL;
+- runs locally with mocks right away;
+- 100 % test coverage, Docker and CI/CD.
 
-## Inhalt
+## Contents
 
-| Pfad | Zweck |
+| Path | Purpose |
 |---|---|
-| [`skills/filemaker-rebuild/SKILL.md`](skills/filemaker-rebuild/SKILL.md) | Claude-Code-Skill: harte Regeln, Ablauf, Fallen |
-| [`…/references/PLAYBOOK.md`](skills/filemaker-rebuild/references/PLAYBOOK.md) | Das Playbook: Grundsätze und Phasen 0–9 |
-| [`…/references/START-PROMPT.md`](skills/filemaker-rebuild/references/START-PROMPT.md) | Ausfüllbarer Start-Prompt für ein neues Projekt |
-| [`…/references/LESSONS-LEARNED.md`](skills/filemaker-rebuild/references/LESSONS-LEARNED.md) | Stolpersteine mit Ursache und Lösung |
-| [`…/references/vorlagen/`](skills/filemaker-rebuild/references/vorlagen) | Vorlagen für ANALYSE, ARCHITEKTUR, BETRIEB, SCHNITTSTELLEN |
-| [`…/references/checklisten/ABSCHLUSS.md`](skills/filemaker-rebuild/references/checklisten/ABSCHLUSS.md) | Checkliste vor Abschluss und Push |
-| [`…/scripts/ddr_inventar.py`](skills/filemaker-rebuild/scripts/ddr_inventar.py) | DDR-Inventar als Markdown, Layout-Texte, Sicherheitsbefunde (ohne Werte) |
+| [`skills/filemaker-rebuild/SKILL.md`](skills/filemaker-rebuild/SKILL.md) | Claude Code skill: hard rules, workflow, pitfalls |
+| [`…/references/PLAYBOOK.md`](skills/filemaker-rebuild/references/PLAYBOOK.md) | The playbook: principles and phases 0–9 |
+| [`…/references/START-PROMPT.md`](skills/filemaker-rebuild/references/START-PROMPT.md) | Fill-in start prompt for a new project |
+| [`…/references/LESSONS-LEARNED.md`](skills/filemaker-rebuild/references/LESSONS-LEARNED.md) | Pitfalls with cause and fix |
+| [`…/references/templates/`](skills/filemaker-rebuild/references/templates) | Templates for ANALYSIS, ARCHITECTURE, OPERATIONS, INTERFACES |
+| [`…/references/checklists/BEFORE-DONE.md`](skills/filemaker-rebuild/references/checklists/BEFORE-DONE.md) | Checklist before completion and push |
+| [`…/scripts/ddr_inventory.py`](skills/filemaker-rebuild/scripts/ddr_inventory.py) | DDR inventory as Markdown, layout texts, security findings (without values) |
 
-## Skill installieren
+## Install the skill
 
-Für alle Projekte (persönlich):
+For all your projects (personal):
 
 ```bash
 ./install.sh
 ```
 
-Das verlinkt `skills/filemaker-rebuild` nach `~/.claude/skills/filemaker-rebuild`. Nach einem `git pull`
-ist der Skill automatisch aktuell. Nur für ein Projekt: den Ordner nach `<projekt>/.claude/skills/` kopieren.
+This links `skills/filemaker-rebuild` to `~/.claude/skills/filemaker-rebuild`, so a `git pull` keeps the
+skill up to date. For a single project only: copy the folder to `<project>/.claude/skills/`.
 
-## So startest du ein neues Projekt
+## Start a new project
 
-1. DDR und Datenbankbericht aus FileMaker exportieren (Werkzeuge → Datenbankentwurfsbericht, Format XML).
-2. Inventar erzeugen:
+1. Export the DDR and the database report from FileMaker (Tools → Database Design Report, format XML).
+2. Create the inventory:
    ```bash
-   python3 -I skills/filemaker-rebuild/scripts/ddr_inventar.py MeineApp_fmp12.xml --texte layout-texte.md > inventar.md
+   python3 -I skills/filemaker-rebuild/scripts/ddr_inventory.py MyApp_fmp12.xml --texts layout-texts.md > inventory.md
    ```
-3. [`START-PROMPT.md`](skills/filemaker-rebuild/references/START-PROMPT.md) ausfüllen und mit den Extrakten
-   in Claude Code geben. Der Skill greift automatisch, sobald es um FileMaker/DDR geht.
-4. Entscheidungen aus `docs/ANALYSE.md` bestätigen, dann Phase für Phase umsetzen lassen.
+3. Fill in [`START-PROMPT.md`](skills/filemaker-rebuild/references/START-PROMPT.md) and give it to Claude Code
+   together with the extracts. The skill kicks in automatically as soon as FileMaker or a DDR comes up.
+4. Confirm the decisions in `docs/ANALYSIS.md`, then have it implemented phase by phase.
 
-## Voraussetzungen
+## Requirements
 
-Python 3.9+ (nur Standardbibliothek) für das Skript, Node.js 22 für die erzeugten Projekte und Claude Code.
+- Python 3.9+ (standard library only) for the script.
+- Node.js 22 for the generated projects.
+- Claude Code.
 
-## Lizenz
+## Licence
 
-MIT, siehe [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).

@@ -1,53 +1,54 @@
 ---
 name: filemaker-rebuild
-description: Rebuild a FileMaker application as a modern web app (Node/TypeScript/Express/PostgreSQL + Angular) with FileMaker behaviour taken over 1:1. Use when the user wants to analyse a FileMaker DDR (Database Design Report, *_fmp12.xml) or Datenbankbericht, migrate or "neu entwickeln" a FileMaker solution, or continue such a project (ANALYSE.md with decisions E-n, mocks per external system, 100 % coverage, Docker/CI). Also use to extract layout texts or security findings from a DDR.
+description: Rebuild a FileMaker application as a modern web app (Node/TypeScript/Express/PostgreSQL + Angular) with FileMaker behaviour taken over 1:1. Use when the user wants to analyse a FileMaker DDR (Database Design Report, *_fmp12.xml) or database report, migrate or redevelop a FileMaker solution, or continue such a project (ANALYSIS.md with decisions D-n, mocks per external system, 100 % coverage, Docker/CI). Also use to extract layout texts or security findings from a DDR.
 ---
 
-# FileMaker → Web-App neu entwickeln
+# Rebuild a FileMaker app as a web app
 
-Dieser Skill führt durch eine FileMaker-Neuentwicklung nach einem erprobten Schema. Die vollständige Anleitung
-steht in `references/PLAYBOOK.md`. Lies sie zu Beginn eines neuen Projekts ganz, bei Folgeaufgaben den
-passenden Abschnitt.
+This skill guides a FileMaker redevelopment along a proven scheme. The full guide is
+`references/PLAYBOOK.md`. Read all of it at the start of a new project; for follow-up tasks, read the section
+that applies.
 
-## Harte Regeln (nie brechen)
+## Hard rules (never break)
 
-1. **Verhalten wie in FileMaker.** Texte, Formeln und Regeln wörtlich übernehmen. Jede Abweichung, auch eine
-   Verbesserung, nur nach Bestätigung des Users. Dokumentiert wird sie als `E-n` in `docs/ANALYSE.md`, mit Datum.
-2. **Geheimnisse aus dem DDR** (Passwörter, ODBC-Zugangsdaten) niemals übernehmen, ausgeben oder wiederholen.
-   Nur den Fundort als Sicherheitsbefund melden und Rotation empfehlen.
-3. **Echtdaten** (CSV-/Excel-Exporte mit Personen) bleiben in einem git-ignorierten Ordner. Nie committen, im
-   Chat nur Anzahlen nennen, keine Namen oder Werte.
-4. **Rechte serverseitig erzwingen**, jedes Fremdsystem mit Mock (`*_MODE`), App mit Mocks sofort lauffähig.
-5. **Fertig heißt geprüft:** Lint 0/0, Tests mit 100 % Abdeckung, Builds grün, im Browser durchgeklickt.
-   Nicht Verifiziertes ausdrücklich nennen.
+1. **Behave like FileMaker.** Take texts, formulas and rules over verbatim. Any deviation, including an
+   improvement, needs the user's confirmation and is recorded as `D-n` in `docs/ANALYSIS.md`, with its date.
+2. **Credentials in the DDR** (passwords, ODBC logins): never take over, print or repeat them. Report only the
+   location as a security finding and recommend rotation.
+3. **Real data** (CSV/Excel exports containing people) stays in a git-ignored folder. Never commit it. In chat,
+   give counts only, never names or values.
+4. **Enforce permissions on the server**, give every external system a mock (`*_MODE`), and make the app run
+   with mocks right away.
+5. **Done means verified:** lint 0/0, tests with 100 % coverage, builds green, clicked through in the browser.
+   Name explicitly whatever could not be verified.
 
-## Ablauf
+## Workflow
 
-1. **Neues Projekt:** Fehlen Angaben aus `references/START-PROMPT.md` (App-Name, Zielordner,
-   Referenzprojekt, Designsystem, Fremdsysteme, Ordner für Echtdaten), frage gezielt nach. Ist der Prompt
-   ausgefüllt, folge ihm.
-2. **Analyse:** Erzeuge das Inventar mit dem Skript (liest UTF-16 selbst):
+1. **New project:** if details from `references/START-PROMPT.md` are missing (app name, target folder,
+   reference project, design system, external systems, folder for real data), ask for them. If the prompt is
+   filled in, follow it.
+2. **Analysis:** create the inventory with the script, which reads UTF-16 itself:
    ```bash
-   python3 -I <skill-dir>/scripts/ddr_inventar.py <DDR.xml> --texte docs/fm-layout-texte.md > docs/fm-inventar.md
+   python3 -I <skill-dir>/scripts/ddr_inventory.py <DDR.xml> --texts docs/fm-layout-texts.md > docs/fm-inventory.md
    ```
-   Die Layout-Texte sind die Quelle für alle Druck- und Meldungstexte. Die Sicherheitsbefunde des Skripts
-   enthalten keine Werte; so bleibt es. Daraus `docs/ANALYSE.md` nach `references/vorlagen/ANALYSE.md`
-   aufbauen. Entscheidungen dem User **vor** der Umsetzung vorlegen.
-3. **Umsetzung** in den Phasen 2–8 des Playbooks. Bei jeder fachlichen Regel die FM-Quelle (Skript, Zeile,
-   Feldformel) im Code-Kommentar oder in ANALYSE.md nennen.
-4. **Vor jedem Commit oder Push:** `references/checklisten/ABSCHLUSS.md`. Insbesondere `npm ci` in einem
-   leeren Verzeichnis testen; ein auf dem Mac erzeugtes Lockfile kann unter Linux scheitern.
-5. **Doku laufend pflegen:** README, `docs/ANALYSE.md`, `ARCHITEKTUR.md`, `BETRIEB.md`, `SCHNITTSTELLEN.md`.
-   Vorlagen dafür liegen in `references/vorlagen/`.
+   - The layout texts are the source for all print and message texts.
+   - The script's security findings contain no values; keep it that way.
+   - Build `docs/ANALYSIS.md` from `references/templates/ANALYSIS.md`.
+   - Present the decisions to the user **before** implementing.
+3. **Implementation:** phases 2–8 of the playbook. For every business rule, cite its FileMaker source (script,
+   line, field formula) in a code comment or in ANALYSIS.md.
+4. **Before every commit or push:** work through `references/checklists/BEFORE-DONE.md`. In particular, test
+   `npm ci` in an empty folder, because a lockfile created on macOS can fail on Linux.
+5. **Keep the docs current:** README, `docs/ANALYSIS.md`, `ARCHITECTURE.md`, `OPERATIONS.md`, `INTERFACES.md`.
+   Templates are in `references/templates/`.
 
-## Bekannte Fallen
+## Known pitfalls
 
-Lies `references/LESSONS-LEARNED.md`, bevor du Importe, abgeleitete Status, Design/Schriften oder die
-CI-Pipeline anfasst. Die wichtigsten Punkte:
+Read `references/LESSONS-LEARNED.md` before you touch imports, derived statuses, design/fonts or the CI
+pipeline. In short:
 
-- **Abgeleiteter Status:** Er muss auch direkt nach dem Anlegen berechnet werden. Ein Auftrag ohne Positionen
-  ist sonst nie „erledigt“.
-- **Importe:** Jedes Ereignis bekommt eine automatische Empfehlung, dazu „ignorieren“ mit Begründung und
-  stabile Ereignisschlüssel.
-- **PGlite:** nie zwei Prozesse auf dasselbe Datenverzeichnis.
-- **Lizenzen:** Hausschrift und Logo nur in privaten Repositories.
+- **Derived status:** evaluate it right after creation too, or an order without items is never "done".
+- **Imports:** every event needs an automatic recommendation, an "ignore" action with a reason, and a stable
+  event key.
+- **PGlite:** never run two processes on the same data directory.
+- **Licences:** corporate fonts and logos belong only in private repositories.

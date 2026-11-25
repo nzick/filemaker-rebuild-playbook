@@ -1,192 +1,192 @@
-# Playbook: FileMaker-Anwendung als Web-App neu entwickeln
+# Playbook: Rebuild a FileMaker application as a web app
 
-Erprobt an mehreren Neuentwicklungen (u. a. eine Anwendung mit über 100 Tabellen,
-300 Skripten und 270 Layouts). Ziel: **gleiches fachliches Verhalten wie in FileMaker**, moderne Architektur,
-sofort lokal lauffähig, 100 % getestet, betriebsbereit (Docker, CI/CD).
+Proven on several redevelopments, including one application with more than 100 tables, 300 scripts and
+270 layouts. The goal: **the same business behaviour as in FileMaker** on a modern architecture. The app runs
+locally right away, is 100 % tested and is ready for operation with Docker and CI/CD.
 
-Die Phasen bauen aufeinander auf. Jede Phase endet mit einem Commit und einem kurzen Bericht an den
-Auftraggeber: was erledigt ist, was offen ist, was nicht geprüft werden konnte.
-
----
-
-## Grundsätze (gelten in jeder Phase)
-
-1. **Verhalten wie in FileMaker.** Texte, Formeln und Regeln 1:1 übernehmen, nichts selbst formulieren.
-   Abweichungen, auch Verbesserungen, nur nach ausdrücklicher Bestätigung. Jede Entscheidung bekommt eine
-   Nummer (E-1, E-2, …) in `docs/ANALYSE.md`, mit Datum und Herkunft („Ihre Entscheidung vom …“).
-2. **Fehler aus FileMaker sichtbar machen statt still korrigieren.** Wirkungslose Prüfungen, unerreichbare
-   Zweige und hartkodierte Konten werden als Entscheidung vorgelegt: 1:1 übernehmen, korrigieren oder weglassen.
-3. **Geheimnisse nie übernehmen.** Passwörter und ODBC-Zugangsdaten aus dem DDR weder in Code, Doku noch Chat
-   wiederholen, sondern nur als Sicherheitsbefund mit Rotationsempfehlung melden.
-4. **Echte Daten bleiben lokal.** Exporte mit Personendaten liegen in einem git-ignorierten Ordner
-   (z. B. `import-lokal/`) und werden nie committet. In Chats und Logs keine Namen oder Werte ausgeben.
-   Test- und Demodaten werden pseudonymisiert.
-5. **Mit Mocks sofort lauffähig.** Jedes Fremdsystem hat einen Adapter mit Mock, umschaltbar per `*_MODE`.
-   Mock-Benutzer je Rolle, Passwort = Login.
-6. **Rechte serverseitig.** Buttons auszublenden reicht nicht. Jede Aktion prüft das Recht im Backend, und
-   Tests sichern 403/422 ab.
-7. **Qualität als Pflicht, nicht als Ziel.** Lint 0/0, 100 % Testabdeckung, per Schwellenwert erzwungen,
-   Produktions-Build grün. Ausnahmen nur begründet im Code.
-8. **Ehrlich berichten.** Was nicht verifiziert wurde (echte Fremdsysteme, Docker, Mail-Versand), steht im
-   Bericht. „Erledigt“ heißt geprüft.
+Each phase builds on the one before. Every phase ends with a commit and a short report to the client: what is
+done, what is open, what could not be verified.
 
 ---
 
-## Phase 0 – Vorbereitung
+## Principles (apply in every phase)
 
-- Extrakte besorgen: DDR (`<Datei>_fmp12.xml`) und Datenbankbericht je FileMaker-Datei, auch für Dateien,
-  auf die per Dateiverweis zugegriffen wird. Dazu CSV- oder Excel-Exporte der Daten, das Logo und
-  Designsystem-Vorgaben.
-- Referenzprojekt festlegen: Ein bereits nach diesem Schema gebautes Projekt liefert Basisklassen
-  (`core/`, `db/`, `auth/`, `shared/`), Design, Lint- und Sonar-Konfiguration sowie den Doku-Aufbau. Ab dem
-  zweiten Projekt spart das die meiste Zeit.
-- Projektordner und Git-Repository anlegen und `.gitignore` sofort um `import-lokal/`, `.env`,
-  Datenverzeichnisse und Backups ergänzen.
-- Start-Prompt aus `START-PROMPT.md` ausfüllen.
+1. **Behave like FileMaker.** Take texts, formulas and rules over verbatim and never write texts of your own.
+   Deviations, improvements included, only with explicit confirmation. Every decision gets a number (D-1,
+   D-2, …) in `docs/ANALYSIS.md`, with its date and origin ("your decision of …").
+2. **Surface FileMaker bugs instead of silently fixing them.** Checks that have no effect, unreachable branches
+   and hard-coded accounts are presented as decisions: keep 1:1, correct or drop.
+3. **Never take over credentials.** Passwords and ODBC logins from the DDR must not appear in code, docs or
+   chat. Report them only as a security finding with a recommendation to rotate.
+4. **Real data stays local.** Exports containing personal data live in a git-ignored folder (e.g.
+   `import-local/`) and are never committed. Chats and logs never show names or values. Test and demo data
+   are pseudonymised.
+5. **Runs with mocks right away.** Every external system gets an adapter with a mock, switched by `*_MODE`.
+   There is one mock user per role; the password equals the login.
+6. **Permissions are enforced on the server.** Hiding buttons is not enough. Every action checks its permission
+   in the backend, and tests cover 403/422.
+7. **Quality is mandatory, not a target.** Lint 0/0 and 100 % test coverage, enforced by thresholds, and a green
+   production build. Exceptions only with a justification in the code.
+8. **Report honestly.** Whatever was not verified (real external systems, Docker, mail delivery) goes into the
+   report. "Done" means verified.
 
-## Phase 1 – Analyse der FileMaker-Extrakte
+---
 
-- DDR ist UTF-16: `scripts/ddr_inventar.py` konvertiert selbst und liefert das Inventar: Basistabellen,
-  Tabellenauftreten, Beziehungen, Skripte, Layouts, Wertelisten, Berechtigungssets, Konten, eigene Funktionen,
-  externe Datenquellen und Sicherheitsbefunde.
-- `--texte` zieht alle Textobjekte der Layouts heraus. Drucklayouts enthalten Brief-, Zahlungs-, Mahn- und
-  Checklistentexte, und die werden wörtlich übernommen.
-- Skripte fachlich lesen: Welche sind Anwendungsfälle, welche UI-Steuerung, welche Altlast? Das Mapping
-  FM-Skript → neue Funktion kommt in `docs/ANALYSE.md`, Abschnitt „Skripte → Funktionen“.
-- Bei mehreren Formelvarianten (auskommentiert/aktiv) gilt die aktive.
-- Felder, die aus anderen Dateien kommen, stehen als offene Punkte mit Anforderung des fehlenden DDR in der Doku.
-- Ungenutzte Objekte nur benennen, nicht nachbauen.
-- **Ergebnis:** `docs/ANALYSE.md` mit Umfang, fachlichem Ablauf, Datenmodell, Skript-Mapping, Rollen,
-  Altlasten, Entscheidungen, Sicherheitsbefund und offenen Punkten. Diese Entscheidungen bestätigen lassen,
-  bevor die Umsetzung beginnt.
+## Phase 0 – Preparation
 
-## Phase 2 – Gerüst und Architektur
+- Collect the extracts:
+  - DDR (`<file>_fmp12.xml`) and database report for each FileMaker file, including files reached through
+    file references;
+  - CSV/Excel data exports;
+  - logo and design-system guidelines.
+- Choose a reference project: a project already built on this scheme supplies the base classes (`core/`,
+  `db/`, `auth/`, `shared/`), the design, the lint/Sonar configuration and the documentation structure. From
+  the second project on, this saves the most time.
+- Create the project folder and Git repository. Right away, add the real-data folder, `.env`, data directories
+  and backups to `.gitignore`.
+- Fill in the start prompt from `START-PROMPT.md`.
 
-- **Backend:** Node.js 22 LTS, TypeScript strict, Express 5, Zod, PostgreSQL 16. Lokal läuft das eingebettete
-  PGlite hinter derselben Datenbank-Abstraktion, ganz ohne Installation. Migrationen sind SQL-Dateien mit
-  Prüfsumme.
-- **Frontend:** Angular (aktuelle Version), standalone, Signals, zoneless, OnPush, strictTemplates, kein `any`.
-- **Webserver:** nginx (SPA + Reverse-Proxy `/api`, Security-Header, CSP ohne Inline-Skripte, Angular mit
-  `inlineCritical=false`). Docker Compose mit `db`, `backend` und `web`.
-- **Schichten:** controllers → services → repositories → db. Fachlogik liegt in `domain/` als Klassen ohne
-  DB-Zugriff. Die Composition Root (`Application`) arbeitet mit Konstruktor-Injektion, ohne Singletons;
-  die Konfiguration ist ein unveränderliches `AppConfig.fromEnv()`.
-- **Patterns** gezielt einsetzen und mit Fundstelle in `docs/ARCHITEKTUR.md` dokumentieren: Abstract Factory
-  (Integrationen), Adapter, Template Method (Controller, PDF), Strategy (Freigabe je Prozessart, Versand),
-  Specification + Composite (Prüfregeln), Chain of Responsibility (Vorbelegungen/Lookups), Builder (SQL, XML),
-  Repository, Value Objects, Fehlerklassen-Hierarchie.
-- SQL immer parametrisiert, dynamische Spaltennamen nur über geprüfte Bezeichner.
+## Phase 1 – Analyse the FileMaker extracts
 
-## Phase 3 – Fachlichkeit umsetzen
+- The DDR is UTF-16. `scripts/ddr_inventory.py` converts it itself and produces the inventory: base tables,
+  table occurrences, relationships, scripts, layouts, value lists, privilege sets, accounts, custom functions,
+  external data sources and security findings.
+- `--texts` extracts every text object from the layouts. Print layouts contain letter, payment, dunning and
+  checklist texts, and those are taken over verbatim.
+- Read the scripts for their business meaning: which are use cases, which drive the UI, which are legacy? The
+  mapping from FM script to new function goes into `docs/ANALYSIS.md`, section "Scripts → functions".
+- If a formula has several variants (commented out / active), the active one applies.
+- Fields that come from other files are listed in the docs as open points, with a request for the missing DDR.
+- Name unused objects, but do not rebuild them.
+- **Result:** `docs/ANALYSIS.md` with scope, business flow, data model, script mapping, roles, legacy objects,
+  decisions, security finding and open points. Have these decisions confirmed before implementation starts.
 
-- Jedes fachlich relevante Skript wird ein Anwendungsfall oder Endpunkt. Meldungstexte bleiben wörtlich.
-- Rollen aus den Berechtigungssets ableiten und Objekt- bzw. Mandantenfilter je Benutzer umsetzen.
-- Optimistic Locking (Versionsnummer), Änderungshistorie je Datensatz, Logbuch für Löschungen und Abgleiche.
-- **Audit-Trail per DB-Trigger:** Er hängt sich automatisch an jede neue Fachtabelle, enthält Quelle
-  (manuell, Import, System) und Vorgangs-ID und ist als CSV exportierbar.
-- Belegnummern transaktionssicher vergeben und danach sperren (GoBD). DSGVO-Löschung bzw. -Anonymisierung
-  mit doppelter Bestätigung.
-- PDFs nach den FM-Drucklayouts, mit Texten wörtlich, Hausschrift eingebettet und Probeexemplar mit Wasserzeichen.
-- Rechnungen, falls vorhanden: XRechnung 3.0 (UBL 2.1, EN 16931), XSD-Prüfung, Archiv mit SHA-256.
-- **Statuswerte, die aus Kindsätzen abgeleitet sind** (z. B. „Auftrag erledigt, wenn alle Positionen
-  erledigt“), auch direkt nach dem Anlegen berechnen. Sonst bleibt ein Datensatz ohne Kindsätze für immer offen.
+## Phase 2 – Scaffold and architecture
 
-## Phase 4 – Fremdsysteme und Importe
+- **Backend:** Node.js 22 LTS, strict TypeScript, Express 5, Zod, PostgreSQL 16. Locally, the embedded PGlite
+  runs behind the same database abstraction, with nothing to install. Migrations are SQL files with a checksum.
+- **Frontend:** Angular (current version), standalone, signals, zoneless, OnPush, strictTemplates, no `any`.
+- **Web server:** nginx (SPA + reverse proxy `/api`, security headers, CSP without inline scripts, Angular with
+  `inlineCritical=false`). Docker Compose with `db`, `backend` and `web`.
+- **Layers:** controllers → services → repositories → db. Business logic lives in `domain/` as classes without
+  database access. The composition root (`Application`) uses constructor injection and no singletons; the
+  configuration is an immutable `AppConfig.fromEnv()`.
+- **Patterns:** use them deliberately and document each one with its location in `docs/ARCHITECTURE.md`:
+  Abstract Factory (integrations), Adapter, Template Method (controllers, PDF), Strategy (release per process
+  type, delivery), Specification + Composite (validation rules), Chain of Responsibility (defaults/lookups),
+  Builder (SQL, XML), Repository, Value Objects, error class hierarchy.
+- SQL is always parameterised; dynamic column names only through checked identifiers.
 
-- Für jedes System gibt es einen Adapter mit Mock. Fällt ein System aus, laufen die anderen weiter; der Fehler
-  steht im Ergebnis und im Log.
-- `docs/SCHNITTSTELLEN.md`: alle Felder je System mit Bedarf (Pflicht / Druck / optional), bisherigem
-  FM-Feldnamen und View-Spezifikation (Schema, Spalten, Typen, Schlüssel, NULL-Regeln, Abnahmekriterien).
-- Anmeldung über AD-Gruppen → Rollen, bevorzugt per OIDC/Entra ID, LDAP nur als Alternative. Vor der
-  Umsetzung klären.
-- Stammdaten aus Fremdsystemen sind nur lesbar (403 im Backend). Lokal gepflegte Zusatzfelder werden als
-  „lokal“ markiert, und der Abgleich überschreibt sie nicht.
-- **Eingehende Lieferungen** (z. B. HR-/SAP-Vollbestand als CSV):
-  - Nur echte Änderungen erkennen, also gegen die vorige Lieferung und den Bestand vergleichen.
-  - Daraus *Vorschläge* (Entwürfe) erzeugen, keine direkten Änderungen.
-  - Jedes Ereignis bekommt einen Status mit Empfehlung (offen, „ignorieren empfohlen“, bereits erfasst,
-    freigegeben, ignoriert). Kein Ereignis bleibt „ohne Vorschlag“.
-  - „Änderung ignorieren“ mit Begründung und „wieder aufnehmen“, beides im Logbuch.
-  - Stabile Schlüssel je Ereignis verwenden, damit nichts doppelt kommt.
-  - Felder, die aus der Lieferung stammen, im Formular sperren.
-- Datenübernahme-Skript aus FM-Exporten: IDs erhalten, Sequenzen nachziehen, `--dry-run`.
+## Phase 3 – Implement the business logic
 
-## Phase 5 – Bedienung und Design
+- Every business-relevant script becomes a use case or endpoint, with its message texts verbatim.
+- Derive roles from the privilege sets, and implement object or tenant filters per user.
+- Optimistic locking (version number), change history per record, log book for deletions and syncs.
+- **Audit trail through DB triggers:** it attaches automatically to every new business table, records the
+  source (manual, import, system) and an operation ID, and can be exported as CSV.
+- Assign document numbers inside a transaction and lock the record afterwards (GoBD). GDPR deletion or
+  anonymisation needs a double confirmation.
+- PDFs follow the FM print layouts, with texts verbatim, the corporate font embedded and a draft copy
+  watermarked.
+- Invoices, if any: XRechnung 3.0 (UBL 2.1, EN 16931), XSD validation, archive with SHA-256.
+- **Statuses derived from child records** (e.g. "order done when all items are done") must also be evaluated
+  right after creation. Otherwise a record without child records stays open forever.
 
-- Entweder-oder-Felder nie gleichzeitig zeigen: erst die Art wählen (Segment), dann das passende Feld.
-  Ein Wechsel leert die übrigen.
-- Pflichtfelder nach Zweck kennzeichnen (immer / für Freigabe / nur in bestimmten Fällen), mit Legende.
-- Live-Checkliste „Was fehlt noch?“ je Workflow-Schritt.
-- Editor-Muster: Tabs, Karten, Seitenleiste, Speichern/Verwerfen-Schutz, Aktionen nach Rechten.
-- **Prozess-Lebenslauf sichtbar machen:** In Erfassung → In Umsetzung → Abgeschlossen, mit Filtern,
-  Überfälligkeit und „liegt seit n Tagen“.
-- Barrierefreiheit: Labels, Enter auf Tabellenzeilen, Escape schließt Dialoge.
-- **Designsystem vollständig:**
-  - Alle Farben, Abstände, Radien und Schriftgrößen als CSS-Variablen (Tokens), keine Hex-Werte oder
-    px-Schriftgrößen in Komponenten.
-  - Hausschrift per `@font-face` (WOFF) einbinden, mit `font-synthesis: none` und
+## Phase 4 – External systems and imports
+
+- Every system gets an adapter with a mock. If one system fails, the others keep running; the error appears in
+  the result and in the log.
+- `docs/INTERFACES.md`: every field per system with its need (required / print / optional), the former FM field
+  name and the view specification (schema, columns, types, keys, NULL rules, acceptance criteria).
+- Sign-in through AD groups → roles, preferably OIDC/Entra ID, LDAP only as an alternative. Agree on this
+  before implementing.
+- Master data from external systems is read-only (403 in the backend). Extra fields maintained locally are
+  marked "local", and the sync never overwrites them.
+- **Incoming deliveries** (e.g. a full HR/ERP extract as CSV):
+  - Detect real changes only, by comparing with the previous delivery and the current data.
+  - Turn them into *proposals* (drafts), not direct changes.
+  - Every event gets a status with a recommendation (open, "ignore recommended", already recorded, released,
+    ignored). No event is left "without a proposal".
+  - Offer "ignore change" with a reason and "resume", both written to the log book.
+  - Use a stable key per event so nothing shows up twice.
+  - Lock fields in the form that come from the delivery.
+- Data migration script from FM exports: keep IDs, advance sequences, `--dry-run`.
+
+## Phase 5 – Usability and design
+
+- Never show either-or fields at the same time: first choose the kind (segment control), then show only the
+  matching field. Switching clears the others.
+- Mark required fields by purpose (always / for release / only in certain cases), with a legend.
+- A live checklist "What is still missing?" for each workflow step.
+- Editor pattern: tabs, cards, sidebar, protection against losing unsaved changes, actions by permission.
+- **Make the process lifecycle visible:** in capture → in progress → completed, with filters, overdue markers
+  and "waiting for n days".
+- Accessibility: labels, Enter on table rows, Escape closes dialogs.
+- **Complete design system:**
+  - All colours, spacings, radii and font sizes as CSS variables (tokens), no hex values or px font sizes in
+    components.
+  - Load the corporate font via `@font-face` (WOFF), with `font-synthesis: none` and
     `button, input, select, textarea { font-family: inherit }`.
-  - Die Hausschrift auch in PDFs einbetten (TTF). Zeichen, die die Schrift nicht hat, auf das Grundzeichen
-    zurückführen.
-  - Lizenz prüfen: Schriftdateien nur in privaten Repositories ablegen.
+  - Embed the corporate font in PDFs too (TTF). Reduce characters the font lacks to their base character.
+  - Check the licence: keep font files in private repositories only.
 
-## Phase 6 – Erweiterungen nach Bedarf
+## Phase 6 – Extensions on demand
 
-Typische Wünsche nach dem 1:1-Nachbau. Jede Erweiterung bekommt eine E-Nummer:
+Typical requests once the 1:1 rebuild stands. Every extension gets a D number:
 
-- Eingabeprüfungen (E-Mail, Telefon, IBAN, Prüfziffern), auch im Backend.
-- Integration weiterer FM-Dateien, die bisher eigenständig liefen.
-- **E-Mail-Benachrichtigungen:**
-  - Ereigniskatalog, persönliche Abos (sofort oder als Sammelmail) und Empfängerregeln im Admin-Bereich.
-  - Erinnerungen vor der Frist und mehrstufige Eskalation bei Überfälligkeit.
-  - Versandprotokoll mit Deduplizierung, Deep-Link zur Bearbeitung.
-  - Ein Zeitplan-Job übernimmt den Versand.
-- Übersicht/Dashboard mit hervorgehobener Kachel „zu bearbeiten“.
+- Input validation (email, phone, IBAN, check digits), in the backend too.
+- Integration of further FM files that used to run separately.
+- **Email notifications:**
+  - event catalogue, personal subscriptions (immediate or digest) and recipient rules in the admin area;
+  - reminders before the deadline and multi-level escalation when overdue;
+  - delivery log with deduplication, deep link for editing;
+  - a scheduled job does the sending.
+- Overview/dashboard with a highlighted "to do" tile.
 
-## Phase 7 – Qualität
+## Phase 7 – Quality
 
-- ESLint mit gts (Google TypeScript Style + Prettier), eslint-plugin-sonarjs und angular-eslint
-  (Template-Barrierefreiheit, OnPush, Signals). Ziel: 0 Fehler, 0 Warnungen.
+- ESLint with gts (Google TypeScript Style + Prettier), eslint-plugin-sonarjs and angular-eslint (template
+  accessibility, OnPush, signals). Target: 0 errors, 0 warnings.
 - Tests:
-  - Unit-Tests für die Fachlogik.
-  - API-Tests gegen Mocks mit In-Memory-PGlite.
-  - Adapter-Tests mit simulierten Quellen.
-  - Frontend-Tests mit vitest.
-- **100 % Abdeckung als Schwelle** in Backend und Frontend (Statements, Branches, Functions, Lines).
-- `sonar-project.properties` für SonarQube (ESLint-, lcov- und JUnit-Berichte).
-- Abhängigkeiten in exakten, mindestens ca. zwei Wochen alten Versionen. `npm audit --omit=dev
-  --audit-level=high` muss sauber sein.
+  - unit tests for the business logic;
+  - API tests against the mocks with in-memory PGlite;
+  - adapter tests with simulated sources;
+  - frontend tests with vitest.
+- **100 % coverage as a threshold** in backend and frontend (statements, branches, functions, lines).
+- `sonar-project.properties` for SonarQube (ESLint, lcov and JUnit reports).
+- Dependencies at exact versions that are at least about two weeks old. `npm audit --omit=dev
+  --audit-level=high` must be clean.
 
-## Phase 8 – Betrieb und CI/CD
+## Phase 8 – Operations and CI/CD
 
-- **Updates ohne Datenverlust:**
-  - Migrationen mit Prüfsumme; geänderte, bereits gelaufene Migrationen brechen ab.
-  - Vor jeder Migration automatisch sichern.
-  - `scripts/update.sh`: Sicherung → neue Images → Neustart → Warten auf Health-Check.
-- `docs/BETRIEB.md`: Integrationen umschalten, Datenübernahme, Produktions-Checkliste, Docker, Import-Zeitplan,
-  Audit, Benachrichtigungen.
-- **Pipeline** (Azure DevOps oder GitHub Actions):
-  - Prüfung: Backend (Lint, Typecheck, Tests mit Abdeckung, Build), Frontend (Lint, Tests, Produktions-Build),
-    Migrationen gegen echtes PostgreSQL (zweimal laufen lassen), Docker-Images und `npm audit`.
+- **Updates without data loss:**
+  - migrations with a checksum; an already applied migration that has changed aborts the run;
+  - an automatic backup before every migration;
+  - `scripts/update.sh`: backup → new images → restart → wait for the health check.
+- `docs/OPERATIONS.md`: switching integrations, data migration, production checklist, Docker, import schedule,
+  audit, notifications.
+- **Pipeline** (Azure DevOps or GitHub Actions):
+  - Checks: backend (lint, type check, tests with coverage, build), frontend (lint, tests, production build),
+    migrations against real PostgreSQL (run twice), Docker images and `npm audit`.
   - Optional SonarQube.
-  - Optionales Deploy per SSH, nur von `main` und mit Freigabe über eine Umgebung.
-- **Vor dem ersten Pipeline-Lauf `npm ci` unter Linux testen**, siehe `LESSONS-LEARNED.md` (Lockfile vom Mac).
+  - Optional deployment via SSH, from `main` only and with an approval through an environment.
+- **Test `npm ci` on Linux before the first pipeline run**; see `LESSONS-LEARNED.md` (lockfile from macOS).
 
-## Phase 9 – Abnahme
+## Phase 9 – Acceptance
 
-Checkliste `checklisten/ABSCHLUSS.md` abarbeiten, die App im Browser je Rolle durchklicken, PDFs ansehen,
-offene Punkte und nicht Verifiziertes klar berichten.
+Work through `checklists/BEFORE-DONE.md`, click through the app in the browser for every role, look at the PDFs,
+and report open points and anything unverified clearly.
 
 ---
 
-## Dokumentation (immer aktuell halten)
+## Documentation (keep it current)
 
-| Datei | Inhalt |
+| File | Content |
 |---|---|
-| `README.md` | Schnellstart (Docker / lokal), Mock-Benutzer, Installation Schritt für Schritt, Tests, CI/CD |
-| `docs/ANALYSE.md` | FM → neu, Skript-Mapping, Rollen, Altlasten, **Entscheidungen E-n**, Sicherheitsbefund, offene Punkte |
-| `docs/ARCHITEKTUR.md` | Schichten, Patterns mit Fundstelle, Querschnittsregeln, Fremdsysteme austauschen |
-| `docs/BETRIEB.md` | Integrationen, Datenübernahme, Produktion, Updates, Import, Audit, CI/CD |
-| `docs/SCHNITTSTELLEN.md` | Felder je Fremdsystem, View-Spezifikationen, Minimal-Satz für den Echtbetrieb |
+| `README.md` | Quick start (Docker / local), mock users, step-by-step installation, tests, CI/CD |
+| `docs/ANALYSIS.md` | FM → new, script mapping, roles, legacy objects, **decisions D-n**, security finding, open points |
+| `docs/ARCHITECTURE.md` | Layers, patterns with location, cross-cutting rules, swapping external systems |
+| `docs/OPERATIONS.md` | Integrations, data migration, production, updates, imports, audit, CI/CD |
+| `docs/INTERFACES.md` | Fields per external system, view specifications, minimal set for production |
 
-Vorlagen liegen in `vorlagen/`.
+Templates are in `templates/`.
